@@ -1,3 +1,7 @@
+# 见20230620-热管堆系统典型设计参数报告.docx
+# 没有采信回热器热侧出口温度399.4 ℃
+# 各处压损设置为0
+# 相关公式见MOOSE Thermal Hydraulic
 import math
 from scipy.optimize import fsolve
 from scipy.interpolate import interp1d
