@@ -96,6 +96,8 @@ p_ambient = 102923.99667814026
 p_outlet = 101325.0
 
 tot_power = 1000000
+recuperator_power = 836098.0899443103
+
 [GlobalParams]
   orientation = '1 0 0'
   gravity_vector = '0 0 0'
@@ -130,7 +132,7 @@ tot_power = 1000000
   [q_wall_fn]
     type = PiecewiseLinear
     x = '0 ${t1} ${t2}'
-    y = '0 194816 194816'    
+    y = '0 ${fparse (tot_power+recuperator_power)/(pi*D3*L3)} ${fparse (tot_power+recuperator_power)/(pi*D3*L3)}'    
   []
   [motor_power_fn]
     type = ParsedFunction
