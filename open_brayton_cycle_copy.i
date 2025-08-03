@@ -183,7 +183,7 @@ tot_power = 1000000
   [motor]
     type = ShaftConnectedMotor
     inertia = ${I_motor}
-    torque = 0 # controlled
+    torque = 0 # controlled by motor_ctrl
   []
   [generator]
     type = ShaftConnectedMotor
