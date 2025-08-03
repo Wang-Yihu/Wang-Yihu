@@ -2,98 +2,16 @@
 # 没有采信回热器热侧出口温度399.4 ℃
 # 各处压损设置为0
 # 相关公式见MOOSE Thermal Hydraulic
+#https://mooseframework.inl.gov/modules/thermal_hydraulics/examples/recuperated_brayton_cycle/recuperated_brayton_cycle.html
 import math
 from scipy.optimize import fsolve
 from scipy.interpolate import interp1d
-from scipy.optimize import brentq
-
+########################################################
 #          6
 #          |
 # 1--C--2--R--3--H--4--T
 #          |           |
 #          5-----------|
-# Input parameters
-#In fact, 48 variables and 52 equations, we need to add 4 variables' condition to solve them!
-#For MOOSE, we always know p0_1, T0_1, p_6, and ω.
-#compressor, 22 variables,18 equations
-#variables: (1~22)
-#s_1, h0_1, T_1, p_1, v_1, u_1
-#p0_1, v0_1, T0_1, c0_1
-#p0_2, v0_2_is, T0_2_is, h0_2_is
-#h0_2, T_2, p_2, v_2, u_2
-#τ_c
-#ω, m_dot
-#Equations：
-#Eq 1: s_1 = cv * ln( T_1^γ / p_1^(γ-1) )
-#Eq 2: p_1 * v_1 = R/M * T_1
-#Eq 3: u_1 = m_dot * v_1 / A_1
-#Eq 4: h0_1 = cp * T_1 + 0.5 * u_1^2
-#Eq 5: p0_1 = (h0_1 / γ / cv)^(γ / (γ-1)) * exp(-s_1 / (γ-1) /cv)
-#Eq 6: v0_1 = R / M / p0_1 * exp( (s_1+cv * (γ-1) * lnp0_1) / γ / cv )
-#Eq 7: T0_1 = p0_1 * v0_1 * M / R
-#Eq 8: c0_1 = sqrt(γ * R * T0_1 / M)
-#Eq 9: p0_2 = p0_1 * Rp_c( m_dot * v0_1 / c0_1 / (rated), ω / c0_1 / (rated) )
-#Eq 10: v0_2_is = R / M / p0_2 * exp( (s_1 + cv * (γ-1) * lnp0_2) / γ / cv )
-#Eq 11: T0_2_is = p0_2 * v0_2_is * M / R
-#Eq 12: h0_2_is = cv * T0_2_is + p0_2 * v0_2_is
-#Eq 13: h0_2 = (h0_2_is - h0_1 +ηc * h0_1) / ηc
-#Eq 14: τ_c = -m_dot / ω * (h0_2 - h0_1)
-#Eq 15: (u_1^2 / v_1 + p_1) * A_1 - (u_2^2 / v_2 + p_2) * A_2 + (p0_2 - p0_1) *A_refc = 0
-#Eq 16: h0_2 = cp * T_2 + 0.5 * u_2^2
-#Eq 17: p_2 * v_2 = R/M * T_2
-#Eq 18: u_2 = m_dot * v_2/A_2
-#####################################################################
-#recuperator, add 15 variables, 12 equations
-#variables:(23~37)
-#h0_3, T_3, p_3, v_3, u_3
-#h0_5, T_5, p_5, v_5, u_5
-#h0_6, T_6, p_6, v_6, u_6
-#Equations：
-#Eq 19: p_3 = p_2
-#Eq 20: p_5 = p_6
-#Eq 21: h0_3 - h0_2 = h0_5 - h0_6
-#Eq 22: p_3 * v_3 = R/M * T_3
-#Eq 23: p_5 * v_5 = R/M * T_5
-#Eq 24: p_6 * v_6 = R/M * T_6
-#Eq 25: h0_3 = cp * T_3 + 0.5 * u_3^2
-#Eq 26: h0_5 = cp * T_5 + 0.5 * u_5^2
-#Eq 27: h0_6 = cp * T_6 + 0.5 * u_6^2
-#Eq 28: u_3 = m_dot * v_3/A_3
-#Eq 29: u_5 = m_dot * v_5/A_5
-#Eq 30: u_6 = m_dot * v_6/A_6
-#####################################################################
-#Heat Source, add 5 variables，5 equations
-#variables: (38~42)
-#h0_4, T_4, p_4, v_4, u_4
-#equations：
-#Eq 31: p_4 = p_3
-#Eq 32: h0_4 = (m_dot * h0_3 + Q) / m_dot
-#Eq 33: p_4 * v_4 = R/M * T_4
-#Eq 34: h0_4 = cp * T_4 + 0.5 * u_4^2
-#Eq 35: u_4 = m_dot * v_4/A_4
-#####################################################################
-#Turbine, add 10 variables, 12 equations
-#variables：(43~52)
-#s_4
-#p0_4, v0_4, T0_4, c0_4
-#p0_5, v0_5_is, T0_5_is, h0_5_is
-#τ_t
-#equations：
-#Eq 36: s_4 = cv * ln( T_4^γ / p_4^(γ-1) )
-#Eq 37: p0_4 = (h0_4 / γ / cv)^(γ / (γ-1)) * exp(-s_4 / (γ-1) /cv)
-#Eq 38: v0_4 = R / M / p0_4 * exp( (s_4+cv * (γ-1) * lnp0_4) / γ / cv )
-#Eq 39: T0_4 = p0_4 * v0_4 * M / R
-#Eq 40: c0_4 = sqrt(γ * R * T0_4 / M)
-#Eq 41: p0_5 = p0_4 * (  Rp_t( m_dot * v0_4 / c0_4 / (rated), ω / c0_4 / (rated) )  )^(-1)
-#Eq 42: v0_5_is = R / M / p0_5 * exp( (s_4 + cv * (γ-1) * lnp0_5) / γ / cv )
-#Eq 43: T0_5_is = p0_5 * v0_5_is * M / R
-#Eq 44: h0_5_is = cv * T0_5_is + p0_5 * v0_5_is
-#Eq 45: h0_5 = ηt * h0_5_is - ηt * h0_4 + h0_4
-#Eq 46: τ_t = -m_dot / ω * (h0_5 - h0_4)
-#Eq 47: (u_4^2 / v_4 + p_4) * A_4 - (u_5^2 / v_5 + p_5) * A_5 + (p0_5 - p0_4) *A_reft = 0
-#####################################################################
-#shaft, add 1 equation
-#Eq 48: τ_c + τ_t + fω = 0
 # compressor curve
 def interpolate_2d_comp(x_input, y_input):
     # Table data: y: ([x values], [z values])
@@ -210,302 +128,276 @@ def interpolate_2d_turb(x_input, y_input):
 
     f_y = interp1d(y_list, z_y_interp, kind='linear', fill_value='extrapolate')
     return float(f_y(y_input))
+##################################################
+#interpolate_2d_comp(rel_corrected_flow, rel_corrected_speed)
+#interpolate_2d_turb(rel_corrected_flow, rel_corrected_speed)
+print(  interpolate_2d_comp(1.1632000, 0.9375)  )
+print(  interpolate_2d_turb(0.9549200, 0.9375)  )
+##################################################
 #####################################################################
-Q_reactor = 1000000; W_generator = 207000
+#In fact, 48 variables and 52 equations, we need to add 4 variables' condition to solve them!
+#For MOOSE, we always know p0_1, T0_1, p_6, and ω.
+#compressor, 22 variables,18 equations
+#variables: (1~22)
+#s_1, h0_1, T_1, p_1, v_1, u_1
+#p0_1, v0_1, T0_1, c0_1
+#p0_2, v0_2_is, T0_2_is, h0_2_is
+#h0_2, T_2, p_2, v_2, u_2
+#τ_c
+#ω, m_dot
+#Equations：
+#Eq 1: s_1 = cv * ln( T_1^γ / p_1^(γ-1) )
+#Eq 2: p_1 * v_1 = R/M * T_1
+#Eq 3: u_1 = m_dot * v_1 / A_1
+#Eq 4: h0_1 = cp * T_1 + 0.5 * u_1^2
+#Eq 5: p0_1 = (h0_1 / γ / cv)^(γ / (γ-1)) * exp(-s_1 / (γ-1) /cv)
+#Eq 6: v0_1 = R / M / p0_1 * exp( (s_1+cv * (γ-1) * lnp0_1) / γ / cv )
+#Eq 7: T0_1 = p0_1 * v0_1 * M / R
+#Eq 8: c0_1 = sqrt(γ * R * T0_1 / M)
+#Eq 9: p0_2 = p0_1 * Rp_c( m_dot * v0_1 / c0_1 / (rated), ω / c0_1 / (rated) )
+#Eq 10: v0_2_is = R / M / p0_2 * exp( (s_1 + cv * (γ-1) * lnp0_2) / γ / cv )
+#Eq 11: T0_2_is = p0_2 * v0_2_is * M / R
+#Eq 12: h0_2_is = cv * T0_2_is + p0_2 * v0_2_is
+#Eq 13: h0_2 = (h0_2_is - h0_1 +ηc * h0_1) / ηc
+#Eq 14: τ_c = -m_dot / ω * (h0_2 - h0_1)
+#Eq 15: (u_1^2 / v_1 + p_1) * A_1 - (u_2^2 / v_2 + p_2) * A_2 + (p0_2 - p0_1) *A_refc = 0
+#Eq 16: h0_2 = cp * T_2 + 0.5 * u_2^2
+#Eq 17: p_2 * v_2 = R/M * T_2
+#Eq 18: u_2 = m_dot * v_2/A_2
+#####################################################################
+#recuperator, add 15 variables, 12 equations
+#variables:(23~37)
+#h0_3, T_3, p_3, v_3, u_3
+#h0_5, T_5, p_5, v_5, u_5
+#h0_6, T_6, p_6, v_6, u_6
+#Equations：
+#Eq 19: p_3 = p_2
+#Eq 20: p_5 = p_6
+#Eq 21: h0_3 - h0_2 = h0_5 - h0_6
+#Eq 22: p_3 * v_3 = R/M * T_3
+#Eq 23: p_5 * v_5 = R/M * T_5
+#Eq 24: p_6 * v_6 = R/M * T_6
+#Eq 25: h0_3 = cp * T_3 + 0.5 * u_3^2
+#Eq 26: h0_5 = cp * T_5 + 0.5 * u_5^2
+#Eq 27: h0_6 = cp * T_6 + 0.5 * u_6^2
+#Eq 28: u_3 = m_dot * v_3/A_3
+#Eq 29: u_5 = m_dot * v_5/A_5
+#Eq 30: u_6 = m_dot * v_6/A_6
+#####################################################################
+#Heat Source, add 5 variables，5 equations
+#variables: (38~42)
+#h0_4, T_4, p_4, v_4, u_4
+#equations：
+#Eq 31: p_4 = p_3
+#Eq 32: h0_4 = (m_dot * h0_3 + Q) / m_dot
+#Eq 33: p_4 * v_4 = R/M * T_4
+#Eq 34: h0_4 = cp * T_4 + 0.5 * u_4^2
+#Eq 35: u_4 = m_dot * v_4/A_4
+#####################################################################
+#Turbine, add 10 variables, 12 equations
+#variables：(43~52)
+#s_4
+#p0_4, v0_4, T0_4, c0_4
+#p0_5, v0_5_is, T0_5_is, h0_5_is
+#τ_t
+#equations：
+#Eq 36: s_4 = cv * ln( T_4^γ / p_4^(γ-1) )
+#Eq 37: p0_4 = (h0_4 / γ / cv)^(γ / (γ-1)) * exp(-s_4 / (γ-1) /cv)
+#Eq 38: v0_4 = R / M / p0_4 * exp( (s_4+cv * (γ-1) * lnp0_4) / γ / cv )
+#Eq 39: T0_4 = p0_4 * v0_4 * M / R
+#Eq 40: c0_4 = sqrt(γ * R * T0_4 / M)
+#Eq 41: p0_5 = p0_4 * (  Rp_t( m_dot * v0_4 / c0_4 / (rated), ω / c0_4 / (rated) )  )^(-1)
+#Eq 42: v0_5_is = R / M / p0_5 * exp( (s_4 + cv * (γ-1) * lnp0_5) / γ / cv )
+#Eq 43: T0_5_is = p0_5 * v0_5_is * M / R
+#Eq 44: h0_5_is = cv * T0_5_is + p0_5 * v0_5_is
+#Eq 45: h0_5 = ηt * h0_5_is - ηt * h0_4 + h0_4
+#Eq 46: τ_t = -m_dot / ω * (h0_5 - h0_4)
+#Eq 47: (u_4^2 / v_4 + p_4) * A_4 - (u_5^2 / v_5 + p_5) * A_5 + (p0_5 - p0_4) *A_reft = 0
+#####################################################################
+#shaft, add 1 equation
+#Eq 48: τ_c + τ_t + fω = 0
+#####################################################################
+#Input parameters:
+p0_1 = 102923.99667814026; T0_1 = 299.4867957686151; p_6 = 101325.0; omega = 96000 * 2 * math.pi / 60.0
+eff_c = 0.79; eff_t = 0.8113204517379417
 M = 0.029; R = 8.314; gamma = 1.4; cv = 1/(gamma-1)*R/M; cp = gamma*cv
-m_dot = 4.34; omega = 96000 * 2 * math.pi / 60.0
-A_1 = math.pi/4*0.3**2; A_2 = math.pi/4*0.3**2; A_3 = math.pi/4*0.3**2
-A_4 = math.pi/4*0.3**2; A_5 = math.pi/4*0.3**2; A_6 = math.pi/4*0.3**2
-A_c = (A_1+A_2)/2; A_t = (A_4+A_5)/2
-eff_c = 0.79
-T_1 = 25.0+273.15; p_1 = 101325.0
-p_3 = 360000.0
-#T_4 = 610 + 273.15
-T_4 = 610 + 273.15
-p_6 = 101325.0
-f_generator = -W_generator/omega/omega
+A_1 = math.pi/4*0.30**2; A_2 = math.pi/4*0.30**2; A_3 = math.pi/4*0.30**2;
+A_4 = math.pi/4*0.30**2; A_5 = math.pi/4*0.30**2; A_6 = math.pi/4*0.30**2
+A_c = (A_1 + A_2)/2; A_t = (A_4 + A_5)/2
 c0_rated_c = 351.6925137; c0_rated_t = 351.6925137
 rho0_rated_c = 1.146881112; rho0_rated_t = 1.146881112
+m_dot_rated_c = 3.6008383500823133; m_dot_rated_t = 3.113025797482743
 omega_rated_c = 96000 * 2 * math.pi / 60.0; omega_rated_t = 96000 * 2 * math.pi / 60.0
-#print(f_generator)
-####################################################################
-# Eq 1 ~ Eq 8
-s_1 = cv * math.log( T_1**gamma / p_1**(gamma-1) )
-v_1 = R/M * T_1/p_1
-u_1 = m_dot * v_1 / A_1
-h0_1 = cp * T_1 + 0.5 * u_1**2
-p0_1 = (h0_1 / gamma / cv)**(gamma / (gamma-1)) * math.exp(-s_1 / (gamma-1) /cv)
-v0_1 = R / M / p0_1 * math.exp( (s_1+cv * (gamma-1) * math.log(p0_1)) / gamma / cv ); rho0_1 = 1/v0_1
-T0_1 = p0_1 * v0_1 * M / R
-c0_1 = math.sqrt(gamma * R * T0_1 / M)
-# Eq 19
-p_2 = p_3
+Q_in = 1000000
+f_generator = -207000.0/omega/omega
+last_iteration_results = {}
+#####################################################################
+#These variables can be got without assumption:
+#Eq 7, 6, 5, 8
+v0_1 = T0_1*R/p0_1/M; rho_0_1 = 1/v0_1
+s_1 = (math.log(v0_1) - math.log(R/M/p0_1)) * gamma*cv - cv*(gamma-1)*math.log(p0_1)
+h0_1 = gamma*cv*(  p0_1/math.exp(-s_1/(gamma-1)/cv)  )**((gamma-1)/gamma)
+c0_1 = math.sqrt(gamma*R*T0_1/M)
+#####################################################################
+def equation(vars):
+    global last_iteration_results
+    m_dot, T_6, T_3, p_1, p_2 = vars
+#####################################################################
+#Compressor:
+#22 variables,18 equations, we also know p0_1, T0_1, omega, and we also assume m_dot
+#So in thoery, the result for compressor can be solved
+#But we also need to assume p_1 and p_2 to make the solve smooth
+#There will be 2 more error equations
+# Combine Eq 1, 4, 3, 2
+    T_1 = math.exp((s_1 / cv + (gamma - 1) * math.log(p_1)) / gamma)
+    u_1 = math.sqrt(2 * (h0_1 - cp * T_1))
+    v_1 = u_1 * A_1 / m_dot
+    err_1 = p_1 * v_1 - R / M * T_1
 
-last_iteration_results_assume_p0_2 = {}
-def assume_p0_2(vars):
-    global last_iteration_results_assume_p0_2
-    p0_2 = vars[0]
-    # Eq 10 ~ Eq 14
-    v0_2_is = R / M / p0_2 * math.exp((s_1 + cv * (gamma - 1) * math.log(p0_2)) / gamma / cv)
+    rel_corrected_flow_c = (m_dot / rho_0_1 / c0_1) / (m_dot_rated_c / rho0_rated_c / c0_rated_c)
+    rel_corrected_speed_c = (omega / c0_1) / (omega_rated_c / c0_rated_c)
+# Combine Eq 9, 10, 11, 12, 13, 14
+    p0_2 = p0_1 * interpolate_2d_comp(rel_corrected_flow_c, rel_corrected_speed_c)
+    v0_2_is = R / M / p0_2 * math.exp((s_1 + cv * (gamma - 1) * math.log( (p0_2) )) / gamma / cv)
     T0_2_is = p0_2 * v0_2_is * M / R
     h0_2_is = cv * T0_2_is + p0_2 * v0_2_is
     h0_2 = (h0_2_is - h0_1 + eff_c * h0_1) / eff_c
-    tau_c = -m_dot/omega*(h0_2 - h0_1)
-    # Eq 16 ~ Eq 18
-    a_eq_16 = 0.5 * m_dot ** 2 * R ** 2 / A_2 ** 2 / M ** 2 / p_2 ** 2
-    b_eq_16 = cp
-    c_eq_16 = -h0_2
-    delta_eq_16 = b_eq_16**2 - 4*a_eq_16*c_eq_16
-    T_2 = (-b_eq_16 + math.sqrt(delta_eq_16)) / 2 / a_eq_16
+    tau_c = - m_dot/omega * (h0_2 - h0_1)
+
+# Eq 16, and replace u_2 -> Eq 18,and 17
+    a_eq_16 = 0.5*m_dot**2*R**2/A_2**2/M**2/p_2**2; b_eq_16 = cp; c_eq_16 = -h0_2
+    Delta_16 = b_eq_16**2 - 4*a_eq_16*c_eq_16
+    T_2 = (  -b_eq_16 + math.sqrt(Delta_16)  )/2/a_eq_16
     u_2 = math.sqrt(2 * (h0_2 - cp * T_2))
     v_2 = u_2 * A_2 / m_dot
-    # Eq 15
-    err = (u_1 ** 2 / v_1 + p_1) * A_1 - (u_2 ** 2 / v_2 + p_2) * A_2 + (p0_2 - p0_1) * A_c
-    last_iteration_results_assume_p0_2 = {
-        "v0_2_is":v0_2_is, "T0_2_is":T0_2_is, "h0_2_is":h0_2_is, "h0_2":h0_2, "tau_c":tau_c,
-        "T_2":T_2, "u_2":u_2, "v_2":v_2, "tau_c":tau_c
-    }
-    return [err]
-
-
-result =  fsolve(assume_p0_2, [p_2])
-p0_2 = result[0]
-v0_2_is = last_iteration_results_assume_p0_2["v0_2_is"]
-T0_2_is = last_iteration_results_assume_p0_2["T0_2_is"]
-h0_2_is = last_iteration_results_assume_p0_2["h0_2_is"]
-h0_2 = last_iteration_results_assume_p0_2["h0_2"]
-T_2 = last_iteration_results_assume_p0_2["T_2"]
-u_2 = last_iteration_results_assume_p0_2["u_2"]
-v_2 = last_iteration_results_assume_p0_2["v_2"]
-tau_c = last_iteration_results_assume_p0_2["tau_c"]
-
-# Eq 31
-p_4 = p_3
-
-# Eq 31 ~ 35
-v_4 = R/M*T_4/p_4
-u_4 = m_dot*v_4/A_4
-h0_4 = cp*T_4 + 0.5*u_4**2
-h0_3 = (m_dot*h0_4 - Q_reactor)/m_dot
-p_4 = p_3
-
-# Eq 22, 25, 28
-a_eq_25 = 0.5 * m_dot ** 2 * R ** 2 / A_3 ** 2 / M ** 2 / p_3 ** 2
-b_eq_25 = cp
-c_eq_25 = -h0_3
-delta_eq_25 = b_eq_25 ** 2 - 4 * a_eq_25 * c_eq_25
-T_3 = (-b_eq_25 + math.sqrt(delta_eq_25)) / 2 / a_eq_25
-u_3 = math.sqrt(2 * (h0_3 - cp * T_3))
-v_3 = u_3 * A_2 / m_dot
-
-# Eq 48, Eq 46
-tau_t = -tau_c - f_generator*omega
-h0_5 = -omega/m_dot*tau_t + h0_4
-
-#Eq 20
-p_5 = p_6
-
-#Eq 23, 26, 29
-a_eq_26 = 0.5 * m_dot ** 2 * R ** 2 / A_5 ** 2 / M ** 2 / p_5 ** 2
-b_eq_26 = cp
-c_eq_26 = -h0_5
-delta_eq_26 = b_eq_26 ** 2 - 4 * a_eq_26 * c_eq_26
-T_5 = (-b_eq_26 + math.sqrt(delta_eq_26)) / 2 / a_eq_26
-u_5 = math.sqrt(2 * (h0_5 - cp * T_5))
-v_5 = u_5 * A_5 / m_dot
-
-# Eq 36 ~ 40
-s_4 = cv * math.log( T_4**gamma / p_4**(gamma-1) )
-p0_4 = (h0_4 / gamma / cv)**(gamma / (gamma-1)) * math.exp(-s_4 / (gamma-1) /cv)
-v0_4 = R / M / p0_4 * math.exp( (s_4+cv * (gamma-1) * math.log(p0_4)) / gamma / cv ); rho0_4 = 1/v0_4
-T0_4 = p0_4 * v0_4 * M / R
-c0_4 = math.sqrt(gamma * R * T0_4 / M)
-
-# Eq 47
-p0_5 = (  (u_5**2 / v_5 + p_5) * A_5 - (u_4**2 / v_4 + p_4) * A_4  )/A_t + p0_4
-
-# Eq 42 ~ 45
-v0_5_is = R / M / p0_5 * math.exp((s_4 + cv * (gamma - 1) * math.log(p0_5)) / gamma / cv)
-T0_5_is = p0_5 * v0_5_is * M / R
-h0_5_is = cv * T0_5_is + p0_5 * v0_5_is
-eff_t = (h0_5-h0_4)/(h0_5_is-h0_4)
-
+    err_2 = (u_1**2/v_1 + p_1)*A_1 - (u_2**2/v_2 + p_2)*A_2 + (p0_2 - p0_1)*A_c
+#####################################################################
+# Recuperator:
+# 15 variables, 12 equations, and we know p_6
+# And we assume T_6, T_3 the beginning
+# We do not need extra error equations
+# Eq 19, 20,
+    p_3 = p_2
+    p_5 = p_6
+# Eq 24, 30, 27,
+    v_6 = R / M * T_6 / p_6
+    u_6 = m_dot * v_6 / A_6
+    h0_6 = cp * T_6 + 0.5 * u_6**2
+# Eq 22, 28, 25
+    v_3 = R / M * T_3 / p_3
+    u_3 = m_dot * v_3 / A_3
+    h0_3 = cp * T_3 + 0.5 * u_3 ** 2
 # Eq 21
-h0_6 = h0_5 - h0_3 + h0_2
+    h0_5 = h0_3 - h0_2 + h0_6
+# Eq 26, and replace u_5 -> Eq 29,and 23
+    a_eq_26 = 0.5*m_dot**2*R**2/A_5**2/M**2/p_5**2; b_eq_26 = cp; c_eq_26 = -h0_5
+    Delta_26 = b_eq_26**2 - 4 * a_eq_26 * c_eq_26
+    T_5 = (-b_eq_26 + math.sqrt(Delta_26)) / 2 / a_eq_26
+    u_5 = math.sqrt((2 * (h0_5 - cp * T_5)))
+    v_5 = u_5 * A_5 / m_dot
+#####################################################################
+# Heat Source
+# 5 variables, 5 equations
+# Eq 31, 32
+    p_4 = p_3
+    h0_4 = (m_dot * h0_3 + Q_in) / m_dot
+# Eq 34, and replace u_4 -> Eq 35, and 33
+    a_eq_34 = 0.5*m_dot**2*R**2/A_4**2/M**2/p_4**2; b_eq_34 = cp; c_eq_34 = -h0_4
+    Delta_34 = b_eq_34 ** 2 - 4 * a_eq_34 * c_eq_34
+    T_4 = (-b_eq_34 + math.sqrt(Delta_34)) / 2 / a_eq_34
+    u_4 = math.sqrt(2 * (h0_4 - cp * T_4))
+    v_4 = u_4 * A_4 / m_dot
+#####################################################################
+# Turbine and motor
+# 10 variables and 13 equations, so we need to solve 3 error equations
+# Eq 36, 37, 38, 39, 40
+    s_4 = cv * math.log( abs(T_4)**gamma / abs(p_4)**(gamma-1) )
+    p0_4 = (abs(h0_4) / gamma / cv) ** (gamma / (gamma - 1)) * math.exp(-s_4 / (gamma - 1) / cv)
+    v0_4 = R / M / p0_4 * math.exp((s_4 + cv * (gamma - 1) * math.log(p0_4)) / gamma / cv); rho_0_4 = 1/v0_4
+    T0_4 = p0_4 * v0_4 * M / R
+    c0_4 = math.sqrt(gamma * R * T0_4 / M)
 
-# Eq 24, 27, 30
-a_eq_27 = 0.5 * m_dot ** 2 * R ** 2 / A_6 ** 2 / M ** 2 / p_6 ** 2
-b_eq_27 = cp
-c_eq_27 = -h0_6
-delta_eq_27 = b_eq_27 ** 2 - 4 * a_eq_27 * c_eq_27
-T_6 = (-b_eq_27 + math.sqrt(delta_eq_27)) / 2 / a_eq_27
-u_6 = math.sqrt(2 * (h0_6 - cp * T_6))
-v_6 = u_6 * A_6 / m_dot
-
-print("====================================")
-print("T_1 = %s"%(T_1), end='; ')
-print("p_1 = %s"%(p_1), end='; ')
-print("h0_1 = %s"%(h0_1), end='; ')
-print("v_1 = %s"%(v_1), end='; ')
-print("u_1 = %s"%(u_1), )
-print("====================================")
-print("T_2 = %s"%(T_2), end='; ')
-print("p_2 = %s"%(p_2), end='; ')
-print("h0_2 = %s"%(h0_2), end='; ')
-print("v_2 = %s"%(v_2), end='; ')
-print("u_2 = %s"%(u_2))
-print("====================================")
-print("T_3 = %s"%(T_3), end='; ')
-print("p_3 = %s"%(p_3), end='; ')
-print("h0_3 = %s"%(h0_3), end='; ')
-print("v_3 = %s"%(v_3), end='; ')
-print("u_3 = %s"%(u_3))
-print("====================================")
-print("T_4 = %s"%(T_4), end='; ')
-print("p_4 = %s"%(p_4), end='; ')
-print("h0_4 = %s"%(h0_4), end='; ')
-print("v_4 = %s"%(v_4), end='; ')
-print("u_4 = %s"%(u_4))
-print("====================================")
-print("T_5 = %s"%(T_5), end='; ')
-print("p_5 = %s"%(p_5), end='; ')
-print("h0_5 = %s"%(h0_5), end='; ')
-print("v_5 = %s"%(v_5), end='; ')
-print("u_5 = %s"%(u_5))
-print("====================================")
-print("T_6 = %s"%(T_6), end='; ')
-print("p_6 = %s"%(p_6), end='; ')
-print("h0_6 = %s"%(h0_6), end='; ')
-print("v_6 = %s"%(v_6), end='; ')
-print("u_6 = %s"%(u_6))
-print("====================================")
-print("T0_1 = %s"%(T0_1), end='; ')
-print("p0_1 = %s"%(p0_1), end='; ')
-print("eff_t = %s"%(eff_t))
-####################################################################
-c0_rated_c = 351.6925137; c0_rated_t = 351.6925137
-rho0_rated_c = 1.146881112; rho0_rated_t = 1.146881112
-omega_rated_c = 96000 * 2 * math.pi / 60.0; omega_rated_t = 96000 * 2 * math.pi / 60.0
-# m_dot_rated_c = 0.25; m_dot_rated_t = 0.25
-def assume_m_dot_rated_c(m_dot_rated_c):
-    rel_corrected_flow_c = (m_dot / rho0_1 / c0_1) / (m_dot_rated_c / rho0_rated_c / c0_rated_c)
-    rel_corrected_speed_c = (omega / c0_1) / (omega_rated_c / c0_rated_c)
-    return p0_2/p0_1 - interpolate_2d_comp(rel_corrected_flow_c, rel_corrected_speed_c)
-
-m_dot_rated_c = brentq(assume_m_dot_rated_c, 0.01*m_dot, 100*m_dot)
-print("m_dot_rated_c = %s"%(m_dot_rated_c))
-
-def assume_m_dot_rated_t(m_dot_rated_t):
-    rel_corrected_flow_t = (m_dot / rho0_4 / c0_4) / (m_dot_rated_t / rho0_rated_t / c0_rated_t)
+    rel_corrected_flow_t = (m_dot / rho_0_4 / c0_4) / (m_dot_rated_t / rho0_rated_t / c0_rated_t)
     rel_corrected_speed_t = (omega / c0_4) / (omega_rated_t / c0_rated_t)
-    return p0_4/p0_5 - interpolate_2d_turb(rel_corrected_flow_t, rel_corrected_speed_t)
+# Eq 41, 42, 43, 44
+    p0_5 = p0_4 * interpolate_2d_turb(rel_corrected_flow_t, rel_corrected_speed_t)**(-1)
+    v0_5_is = R / M / p0_5 * math.exp((s_4 + cv * (gamma - 1) * math.log((p0_5))) / gamma / cv)
+    T0_5_is = p0_5 * v0_5_is * M / R
+    h0_5_is = cv * T0_5_is + p0_5 * v0_5_is
+# Eq 45
+    err_3 = eff_t * h0_5_is - eff_t * h0_4 + h0_4 - h0_5
+# Eq 46, 48
+    tau_t = -m_dot / omega * (h0_5 - h0_4)
+    err_4 = tau_c + tau_t + f_generator*omega
+# Eq 47
+    err_5 = (u_4 ** 2 / v_4 + p_4) * A_4 - (u_5 ** 2 / v_5 + p_5) * A_5 + (p0_5 - p0_4) * A_t
 
-m_dot_rated_t = brentq(assume_m_dot_rated_t, 0.01*m_dot, 100*m_dot)
-print("m_dot_rated_t = %s"%(m_dot_rated_t))
-print("tau_c = %s"%(tau_c),end='; ');print("tau_t = %s"%(tau_t))
-####################################################################
+    last_iteration_results = {
+        "T_1":T_1, "p_1":p_1, "v_1":v_1, "u_1":u_1, "h0_1":h0_1,
+        "T_2":T_2, "p_2":p_2, "v_2":v_2, "u_2":u_2, "h0_2":h0_2,
+        "T_3":T_3, "p_3":p_3, "v_3":v_3, "u_3":u_3, "h0_3":h0_3,
+        "T_4":T_4, "p_4":p_4, "v_4":v_4, "u_4":u_4, "h0_4":h0_4,
+        "T_5":T_5, "p_5":p_5, "v_5":v_5, "u_5":u_5, "h0_5":h0_5,
+        "T_6":T_6, "p_6":p_6, "v_6":v_6, "u_6":u_6, "h0_6":h0_6,
+        "m_dot":m_dot, "omega":omega,
+        "Rp_c":p0_2/p0_1, "tau_c":tau_c,
+        "Rp_t":p0_4/p0_5, "tau_t":tau_t,
+        "tau_g":f_generator*omega
+    }
 
+    return [err_1, err_2, err_3, err_4, err_5]
 
-# Checking equations
-error_1 = (  s_1 - cv * math.log( T_1**gamma / p_1**(gamma-1) )  )/s_1
-error_2 = (p_1 - R/M * T_1/v_1)/p_1
-error_3 = (u_1 - m_dot * v_1 / A_1)/u_1
-error_4 = (  h0_1 - (cp * T_1 + 0.5 * u_1**2)  )/h0_1
-error_5 = (  p0_1 - (h0_1 / gamma / cv)**(gamma / (gamma-1)) * math.exp(-s_1 / (gamma-1) /cv)  )/p0_1
-error_6 = (  v0_1 - R / M / p0_1 * math.exp( (s_1+cv * (gamma-1) * math.log(p0_1)) / gamma / cv )  )/v0_1
-error_7 = (  T0_1 - p0_1 * v0_1 * M / R  )/T0_1
-error_8 = (  c0_1 - math.sqrt(gamma * R * T0_1 / M)  )/c0_1
-error_9 = (p0_2/p0_1 - interpolate_2d_comp((m_dot / rho0_1 / c0_1) / (m_dot_rated_c / rho0_rated_c / c0_rated_c), \
-(omega / c0_1) / (omega_rated_c / c0_rated_c))) /(p0_2/p0_1)
-error_10 = v0_2_is - R / M / p0_2 * math.exp( (s_1 + cv * (gamma-1) * math.log(p0_2)) / gamma / cv )
-error_11 = (T0_2_is - p0_2 * v0_2_is * M / R)/T0_2_is
-error_12 = (h0_2_is - (cv * T0_2_is + p0_2 * v0_2_is))/h0_2_is
-error_13 = (  h0_2 - (h0_2_is - h0_1 +eff_c * h0_1) / eff_c  )
-error_14 = (  tau_c - (-m_dot / omega * (h0_2 - h0_1))  )/tau_c
-error_15 = (  (u_1**2 / v_1 + p_1) * A_1 - (u_2**2 / v_2 + p_2) * A_2 + (p0_2 - p0_1) *A_c  )/((p0_2 - p0_1) *A_c )
-error_16 = (h0_2 - (cp * T_2 + 0.5 * u_2**2))/h0_2
-error_17 = (p_2 * v_2 - R/M * T_2)/(p_2 * v_2)
-error_18 = (u_2 - m_dot * v_2/A_2)/u_2
-error_19 = (p_3 - p_2)/p_3
-error_20 = (p_5 - p_6)/p_5
-error_21 = (  h0_3 - h0_2 - (h0_5 - h0_6)  )/(h0_5 - h0_6)
-error_22 = (p_3 * v_3 - R/M * T_3)/(p_3 * v_3)
-error_23 = (p_5 * v_5 - R/M * T_5)/(p_5 * v_5)
-error_24 = (p_6 * v_6 - R/M * T_6)/(p_6 * v_6)
-error_25 = (h0_3 - (cp * T_3 + 0.5 * u_3**2))/h0_3
-error_26 = (h0_5 - (cp * T_5 + 0.5 * u_5**2))/h0_5
-error_27 = (h0_6 - (cp * T_6 + 0.5 * u_6**2))/h0_6
-error_28 = (u_3 - m_dot * v_3/A_3)/u_3
-error_29 = (u_5 - m_dot * v_5/A_5)/u_5
-error_30 = (u_6 - m_dot * v_6/A_6)/u_6
-error_31 = (p_4 - p_3)/p_4
-error_32 = (h0_4 - (m_dot * h0_3 + Q_reactor) / m_dot)/h0_4
-error_33 = (p_4 * v_4 - R/M * T_4)/p_4 * v_4
-error_34 = (h0_4 - (cp * T_4 + 0.5 * u_4**2))/h0_4
-error_35 = (u_4 - m_dot * v_4/A_4)/u_4
-error_36 = s_4 - cv * math.log( T_4**gamma / p_4**(gamma-1) )
-error_37 = (p0_4 - (h0_4 / gamma / cv)**(gamma / (gamma-1)) * math.exp(-s_4 / (gamma-1) /cv))/p0_4
-error_38 = (v0_4 - R / M / p0_4 * math.exp( (s_4+cv * (gamma-1) * math.log(p0_4)) / gamma / cv ))/v0_4
-error_39 = (T0_4 - p0_4 * v0_4 * M / R)/T0_4
-error_40 = (c0_4 - math.sqrt(gamma * R * T0_4 / M))/c0_4
-error_41 =  (p0_4/p0_5 - interpolate_2d_turb((m_dot / rho0_4 / c0_4) / (m_dot_rated_t / rho0_rated_t / c0_rated_t), \
-(omega / c0_4) / (omega_rated_t / c0_rated_t))) /(p0_4/p0_5)
-error_42 = (v0_5_is - R / M / p0_5 * math.exp( (s_4 + cv * (gamma-1) * math.log(p0_5)) / gamma / cv ))/v0_5_is
-error_43 = (T0_5_is - p0_5 * v0_5_is * M / R)/T0_5_is
-error_44 = (h0_5_is - (cv * T0_5_is + p0_5 * v0_5_is))/h0_5_is
-error_45 = (h0_5 - (eff_t * h0_5_is - eff_t * h0_4 + h0_4))/h0_5
-error_46 = (tau_t - (-m_dot / omega * (h0_5 - h0_4)))/tau_t
-error_47 = ((u_4**2 / v_4 + p_4) * A_4 - (u_5**2 / v_5 + p_5) * A_5 + (p0_5 - p0_4) *A_t)/((p0_5 - p0_4) *A_t)
-error_48 = (tau_c + tau_t + f_generator*omega )/f_generator*omega
-print("=======output errors=============")
-print("error_1 = %s"%(error_1))
-print("error_2 = %s"%(error_2))
-print("error_3 = %s"%(error_3))
-print("error_4 = %s"%(error_4))
-print("error_5 = %s"%(error_5))
-print("error_6 = %s"%(error_6))
-print("error_7 = %s"%(error_7))
-print("error_8 = %s"%(error_8))
-print("error_9 = %s"%(error_9))
-print("error_10 = %s"%(error_10))
-print("error_11 = %s"%(error_11))
-print("error_12 = %s"%(error_12))
-print("error_13 = %s"%(error_13))
-print("error_14 = %s"%(error_14))
-print("error_15 = %s"%(error_15))
-print("error_16 = %s"%(error_16))
-print("error_17 = %s"%(error_17))
-print("error_18 = %s"%(error_18))
-print("error_19 = %s"%(error_19))
-print("error_20 = %s"%(error_20))
-print("error_21 = %s"%(error_21))
-print("error_22 = %s"%(error_22))
-print("error_23 = %s"%(error_23))
-print("error_24 = %s"%(error_24))
-print("error_25 = %s"%(error_25))
-print("error_26 = %s"%(error_26))
-print("error_27 = %s"%(error_27))
-print("error_28 = %s"%(error_28))
-print("error_29 = %s"%(error_29))
-print("error_30 = %s"%(error_30))
-print("error_31 = %s"%(error_31))
-print("error_32 = %s"%(error_32))
-print("error_33 = %s"%(error_33))
-print("error_34 = %s"%(error_34))
-print("error_35 = %s"%(error_35))
-print("error_36 = %s"%(error_36))
-print("error_37 = %s"%(error_37))
-print("error_38 = %s"%(error_38))
-print("error_39 = %s"%(error_39))
-print("error_40 = %s"%(error_40))
-print("error_41 = %s"%(error_41))
-print("error_42 = %s"%(error_42))
-print("error_43 = %s"%(error_43))
-print("error_44 = %s"%(error_44))
-print("error_45 = %s"%(error_45))
-print("error_46 = %s"%(error_46))
-print("error_47 = %s"%(error_47))
-
+result =  fsolve(equation, [4.34, 478.0, 652.0, 100000.0, 360000.0])  # assuming inital value for m_dot, T_6, T_3, p_1, p_2
+print(result)
+#Print result
+#m_dot = result[0]; T_6 = result[1]; T_3 = result[2]; p_1 = result[3]; p_2 = result[4]
+print("====================================")
+print("T_1 =", last_iteration_results["T_1"], end='; ')
+print("p_1 =", last_iteration_results["p_1"], end='; ')
+print("h0_1 =", last_iteration_results["h0_1"], end='; ')
+print("v_1 =", last_iteration_results["v_1"], end='; ')
+print("u_1 =", last_iteration_results["u_1"])
+print("====================================")
+print("T_2 =", last_iteration_results["T_2"], end='; ')
+print("p_2 =", last_iteration_results["p_2"], end='; ')
+print("h0_2 =", last_iteration_results["h0_2"], end='; ')
+print("v_2 =", last_iteration_results["v_2"], end='; ')
+print("u_2 =", last_iteration_results["u_2"])
+print("====================================")
+print("T_3 =", last_iteration_results["T_3"], end='; ')
+print("p_3 =", last_iteration_results["p_3"], end='; ')
+print("h0_3 =", last_iteration_results["h0_3"], end='; ')
+print("v_3 =", last_iteration_results["v_3"], end='; ')
+print("u_3 =", last_iteration_results["u_3"])
+print("====================================")
+print("T_4 =", last_iteration_results["T_4"], end='; ')
+print("p_4 =", last_iteration_results["p_4"], end='; ')
+print("h0_4 =", last_iteration_results["h0_4"], end='; ')
+print("v_4 =", last_iteration_results["v_4"], end='; ')
+print("u_4 =", last_iteration_results["u_4"])
+print("====================================")
+print("T_5 =", last_iteration_results["T_5"], end='; ')
+print("p_5 =", last_iteration_results["p_5"], end='; ')
+print("h0_5 =", last_iteration_results["h0_5"], end='; ')
+print("v_5 =", last_iteration_results["v_5"], end='; ')
+print("u_5 =", last_iteration_results["u_5"])
+print("====================================")
+print("T_6 =", last_iteration_results["T_6"], end='; ')
+print("p_6 =", last_iteration_results["p_6"], end='; ')
+print("h0_6 =", last_iteration_results["h0_6"], end='; ')
+print("v_6 =", last_iteration_results["v_6"], end='; ')
+print("u_6 =", last_iteration_results["u_6"])
+print("====================================")
+print("m_dot =", last_iteration_results["m_dot"], end='; ')
+print("omega =", last_iteration_results["omega"])
+print("====================================")
+print("Rp_c =", last_iteration_results["Rp_c"], end='; ')
+print("tau_c =", last_iteration_results["tau_c"], end='; ')
+print("Rp_t =", last_iteration_results["Rp_t"], end='; ')
+print("tau_t =", last_iteration_results["tau_t"], end='; ')
+print("tau_g =", last_iteration_results["tau_g"])
+print("====================================")
+print("f_generator = %s"%(f_generator))
 
 
 
