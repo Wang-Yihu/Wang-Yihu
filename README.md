@@ -23,3 +23,5 @@ chouqihuire_snerdihp.py其实数据和chouqihuire_snerdihp_youdongneng.py差不�
 huanreqi.i是一个套管式换热器的算例，方程在输入卡的备注里
 
 open_brayton_cycle_copy.i就是开式无抽气回热布雷顿来建立728模型的例子，由于没有抽气回热器，里面的热源其实是原定的反应堆功率1000000再加上抽气回热器功率836098.0899443103
+
+recuperator_brayton_cycle.i就是根据那几个python来建立的抽气回热布雷顿，但是很难控制最终状态稳定在什么情况，而且达成稳态时的各个参数都太奇怪了
