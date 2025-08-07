@@ -20,4 +20,6 @@ chouqihuire_snerdihp_youdongneng.py就是我用728的那个实验文档设计的
 
 chouqihuire_snerdihp.py其实数据和chouqihuire_snerdihp_youdongneng.py差不多，只是已知量用的是MOOSE的逻辑，即p0_1, T0_1, p_6, omega
 
+huanreqi.i是一个套管式换热器的算例，方程在输入卡的备注里
+
 open_brayton_cycle_copy.i就是开式无抽气回热布雷顿来建立728模型的例子，由于没有抽气回热器，里面的热源其实是原定的反应堆功率1000000再加上抽气回热器功率836098.0899443103
