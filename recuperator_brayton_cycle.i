@@ -16,6 +16,17 @@
 #   t1 - t2: motor no change, heat ramps up
 #   t2 - t3: motor ramps down, heat no change
 #   t3 - t4: no change
+#                                      HEAT
+#   --PIPE1-(1)--C--(2)-PIPE2-(3)--J--PIPE3-(4)--J--PIPE4--T--(5)-PIPE5
+#                                                                      |
+#                                                                      J
+#                                                                      |
+#                  recuperator(2&8)                                    P
+#                                                                      6
+#                                                                      |
+#                                                                      J
+#                                                                      |
+#           -------(6)-PIPE8--J--PIPE7---------------------------------
 I_motor = 1.0
 motor_torque_max =  400.0 #400.0
 
