@@ -1,0 +1,9 @@
+简单的一个压气机：
+1-C-2
+方程：
+Eq1: p_1*v_1 = R/M*T_1; Eq2: u_1 = m_dot*v_1/A_1; Eq3: h_1 = cp*T_1
+Eq4: p_2*v_2 = R/M*T_2; Eq5: u_2 = m_dot*v_2/A_2; Eq6: h_2 = cp*T_2
+
+Eq7: s_1 = cv*math.log( T_1**gamma/p_1**(gamma-1) )
+Eq8: c_1 = math.sqrt(gamma*R*T_1/M)
+Eq9: v_2_is = R/M/p_2 * math.exp(  ( s_1+cv*(gamma-1)*math.log(p_2) )/gamma/cv  )
