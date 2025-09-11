@@ -2,7 +2,7 @@
 https://mooseframework.inl.gov/source/components/ShaftConnectedCompressor1Phase.html
 https://mooseframework.inl.gov/source/userobjects/ADShaftConnectedCompressor1PhaseUserObject.html
 但我修改了一下，如果忽略滞止参数，会发生什么？
-C: 压缩机; T: 透平; H: 加热段; R: 回热器
+C: 压缩机; T: 透平; H: 加热段; R: 回热器；M：电机；G：发电机
 ====================================================================================
 简单的一个压气机：
 1-C-2
@@ -40,3 +40,38 @@ Eq1: p_1*v_1 = R/M*T_1; Eq2: u_1 = m_dot*v_1/A_1; Eq3: h_1 = cp*T_1
 Eq4: p_2*v_2 = R/M*T_2; Eq5: u_2 = m_dot*v_2/A_2; Eq6: h_2 = cp*T_2
 Eq7: p_3*v_3 = R/M*T_3; Eq8: u_3 = m_dot*v_3/A_3; Eq9: h_3 = cp*T_3
 Eq10: p_4*v_4 = R/M*T_4; Eq11: u_4 = m_dot*v_4/A_4; Eq12: h_4 = cp*T_4
+
+Eq13: s_1 = cv*math.log( T_1**gamma/p_1**(gamma-1) )
+Eq14: c_1 = math.sqrt(gamma*R*T_1/M)
+Eq15: p_2/p_1 = Rp_c(  (m_dot*v_1/c_1)/(rated),(omega/c_1)/(rated)   )
+Eq16: v_2_is = R/M/p_2 * math.exp(  ( s_1+cv*(gamma-1)*math.log(p_2) )/gamma/cv  )
+Eq17: T_2_is = p_2*v_2_is*M/R
+Eq18: h_2_is = cp*T_2_is
+Eq19: h_2 = (h_2_is - h_1 + eff_c*h_1)/eff_c
+
+Eq20: s_3 = cv*math.log( T_3**gamma/p_3**(gamma-1) )
+Eq21: c_3 = math.sqrt(gamma*R*T_3/M)
+Eq22: p_3/p_4 = Rp_t(  (m_dot*v_3/c_3)/(rated),(omega/c_3)/(rated)   )
+Eq23: v_4_is = R/M/p_4 * math.exp(  ( s_4+cv*(gamma-1)*math.log(p_4) )/gamma/cv  )
+Eq24: T_4_is = p_4*v_4_is*M/R
+Eq25: h_4_is = cp*T_4_is
+Eq26: h_4 = eff_t*h_4_is - eff_t*h_3 + h_3
+
+Eq27: tau_c = -m_dot/omega * (h_2 - h_1)
+Eq28: tau_t = -m_dot/omega * (h_4 - h_3)
+Eq29: tau_m + tau_c + tau_t = 0
+
+Eq30: h_3 = (m_dot*h_2 + Q)/m_dot
+
+Eq31: p_3 = p_2
+
+34个未知数：
+p_1, v_1, T_1, u_1, h_1
+p_2, v_2, T_2, u_2, h_2
+p_3, v_3, T_3, u_3, h_3
+p_4, v_4, T_4, u_4, h_4
+s_1, c_1, v_2_is, T_2_is, h_2_is
+s_3, c_3, v_4_is, T_4_is, h_4_is
+tau_c, tau_t
+m_dot, omega
+
