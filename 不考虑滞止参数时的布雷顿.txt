@@ -2,6 +2,7 @@
 https://mooseframework.inl.gov/source/components/ShaftConnectedCompressor1Phase.html
 https://mooseframework.inl.gov/source/userobjects/ADShaftConnectedCompressor1PhaseUserObject.html
 但我修改了一下，如果忽略滞止参数，会发生什么？
+C: 压缩机; T: 透平; H: 加热段; R: 回热器
 ====================================================================================
 简单的一个压气机：
 1-C-2
@@ -19,12 +20,14 @@ Eq13: h_2 = (h_2_is - h_1 + eff_c*h_1)/eff_c
 
 Eq14: tau_c = -m_dot/omega * (h_2 - h_1)
 Eq15: tau_m + tau_c = 0
+
 18个未知数：
 p_1, v_1, T_1, u_1, h_1
 p_2, v_2, T_2, u_2, h_2
 s_1, c_1, v_2_is, T_2_is, h_2_is
 tau_c
 m_dot, omega
+
 求解方法：
 解方程1, 3, 7, 8
 解方程10, 11, 12, 13, 6, 4
@@ -32,3 +35,8 @@ m_dot, omega
 ====================================================================================
 但如果是开式布雷顿？
 1-C-2-H-3-T-4
+方程：
+Eq1: p_1*v_1 = R/M*T_1; Eq2: u_1 = m_dot*v_1/A_1; Eq3: h_1 = cp*T_1
+Eq4: p_2*v_2 = R/M*T_2; Eq5: u_2 = m_dot*v_2/A_2; Eq6: h_2 = cp*T_2
+Eq7: p_3*v_3 = R/M*T_3; Eq8: u_3 = m_dot*v_3/A_3; Eq9: h_3 = cp*T_3
+Eq10: p_4*v_4 = R/M*T_4; Eq11: u_4 = m_dot*v_4/A_4; Eq12: h_4 = cp*T_4
