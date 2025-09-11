@@ -1,3 +1,8 @@
+理论出自：
+https://mooseframework.inl.gov/source/components/ShaftConnectedCompressor1Phase.html
+https://mooseframework.inl.gov/source/userobjects/ADShaftConnectedCompressor1PhaseUserObject.html
+但我修改了一下，如果忽略滞止参数，会发生什么？
+====================================================================================
 简单的一个压气机：
 1-C-2
 方程：
@@ -6,4 +11,24 @@ Eq4: p_2*v_2 = R/M*T_2; Eq5: u_2 = m_dot*v_2/A_2; Eq6: h_2 = cp*T_2
 
 Eq7: s_1 = cv*math.log( T_1**gamma/p_1**(gamma-1) )
 Eq8: c_1 = math.sqrt(gamma*R*T_1/M)
-Eq9: v_2_is = R/M/p_2 * math.exp(  ( s_1+cv*(gamma-1)*math.log(p_2) )/gamma/cv  )
+Eq9: p_2/p_1 = Rp_c(  (m_dot*v_1/c_1)/(rated),(omega/c_1)/(rated)   )
+Eq10: v_2_is = R/M/p_2 * math.exp(  ( s_1+cv*(gamma-1)*math.log(p_2) )/gamma/cv  )
+Eq11: T_2_is = p_2*v_2_is*M/R
+Eq12: h_2_is = cp*T_2_is
+Eq13: h_2 = (h_2_is - h_1 + eff_c*h_1)/eff_c
+
+Eq14: tau_c = -m_dot/omega * (h_2 - h_1)
+Eq15: tau_m + tau_c = 0
+18个未知数：
+p_1, v_1, T_1, u_1, h_1
+p_2, v_2, T_2, u_2, h_2
+s_1, c_1, v_2_is, T_2_is, h_2_is
+tau_c
+m_dot, omega
+求解方法：
+解方程1, 3, 7, 8
+解方程10, 11, 12, 13, 6, 4
+联立9, 14, 15解m_dot和omega
+====================================================================================
+但如果是开式布雷顿？
+1-C-2-H-3-T-4
