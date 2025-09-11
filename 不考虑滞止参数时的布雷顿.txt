@@ -28,10 +28,11 @@ s_1, c_1, v_2_is, T_2_is, h_2_is
 tau_c
 m_dot, omega
 
-求解方法：
+求解方法（已知p_1, T_1, p_2）：
 解方程1, 3, 7, 8
 解方程10, 11, 12, 13, 6, 4
 联立9, 14, 15解m_dot和omega
+如果是瞬态问题，那就是解常微分方程 domega/dt = tau_m + tau_c，然后用上述方法，把式子右侧写成omega的函数
 ====================================================================================
 但如果是开式布雷顿？
 1-C-2-H-3-T-4
@@ -75,3 +76,9 @@ s_3, c_3, v_4_is, T_4_is, h_4_is
 tau_c, tau_t
 m_dot, omega
 
+求解方法（已知p_1, T_1, p_4）：
+解方程1, 3, 13, 14
+观察tau_m + tau_c + tau_t = 0, tau_t = -m_dot/omega * (h_4 - h_3), tau_c = -m_dot/omega * (h_2 - h_1), 试着把每一项写成和omega相关的函数
+p_2/p_1 = Rp_c(  (m_dot*v_1/c_1)/(rated),(omega/c_1)/(rated)   ), p_3/p_4 = Rp_t(  (m_dot*v_3/c_3)/(rated),(omega/c_3)/(rated)   ), p_3 = p_2
+联立，得, p_1/p_4 = Rp_t(  (m_dot*v_3/c_3)/(rated),(omega/c_3)/(rated)   )/Rp_c(  (m_dot*v_1/c_1)/(rated),(omega/c_1)/(rated)   ), 因此我们用这种方法，可以用omega表示出m_dot
+h_2, h_3, h_4皆可以用m_dot表示出来
