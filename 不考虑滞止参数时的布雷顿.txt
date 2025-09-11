@@ -82,3 +82,12 @@ m_dot, omega
 p_2/p_1 = Rp_c(  (m_dot*v_1/c_1)/(rated),(omega/c_1)/(rated)   ), p_3/p_4 = Rp_t(  (m_dot*v_3/c_3)/(rated),(omega/c_3)/(rated)   ), p_3 = p_2
 联立，得, p_1/p_4 = Rp_t(  (m_dot*v_3/c_3)/(rated),(omega/c_3)/(rated)   )/Rp_c(  (m_dot*v_1/c_1)/(rated),(omega/c_1)/(rated)   ), 因此我们用这种方法，可以用omega表示出m_dot
 h_2, h_3, h_4皆可以用m_dot表示出来
+====================================================================================
+但如果是抽气回热布雷顿？
+      6
+      |
+1-C-2-R-3-H-4-T-|
+      |---5-----|
+p_2/p_1 = Rp_c(  (m_dot*v_1/c_1)/(rated),(omega/c_1)/(rated)   )
+p_4/p_5 = Rp_t(  (m_dot*v_4/c_4)/(rated),(omega/c_4)/(rated)   )
+p_2 = p_3 = p_4; p_5 = p_6
