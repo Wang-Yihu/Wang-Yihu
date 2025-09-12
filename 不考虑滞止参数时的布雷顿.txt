@@ -91,3 +91,4 @@ h_2, h_3, h_4皆可以用m_dot表示出来
 p_2/p_1 = Rp_c(  (m_dot*v_1/c_1)/(rated),(omega/c_1)/(rated)   )
 p_4/p_5 = Rp_t(  (m_dot*v_4/c_4)/(rated),(omega/c_4)/(rated)   )
 p_2 = p_3 = p_4; p_5 = p_6
+所以联立一番，可得p_6/p_1 = Rp_c/Rp_t
