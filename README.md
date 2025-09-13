@@ -27,3 +27,5 @@ open_brayton_cycle_copy.i就是开式无抽气回热布雷顿来建立728模型�
 recuperator_brayton_cycle.i就是根据那几个python来建立的抽气回热布雷顿，但是很难控制最终状态稳定在什么情况，而且达成稳态时的各个参数都太奇怪了
 
 jac.massflowrate_3eqn_water97_myself.i是我自己写的单管摩擦压降，但是结果和轴向控制体关系很大，怀疑MOOSE不能很好地算这个东西。
+
+chouqihuire_snerdihp_bukaolvzhizhi.py就是不考虑滞止参数的布雷顿，抽气回热器的功率是自己拟定的
