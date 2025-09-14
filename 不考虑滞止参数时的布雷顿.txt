@@ -149,3 +149,4 @@ p_2 = p_3 = p_4; p_5 = p_6
 (1/h_i*1/(math.pi*d_i*n*L) + 1/h_o*1/(math.pi*d_o*n*L)) * Q = (T_5+T_6)/2 - (T_2+T_3)/2
 Q = cp*m_dot*(T_3 - T_2)
 Q = cp*m_dot*(T_5 - T_6)
+
