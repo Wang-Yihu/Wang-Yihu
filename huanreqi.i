@@ -7,6 +7,13 @@
 #Q/(num_rods) = 2*math.pi*k*L*(T_i-T_o)/math.log(r_o/r_i)
 #Q = H_w*P_hf_i*L*(  (T_5+T_6)/2-T_i  )
 #Q = H_w*P_hf_o*L*(  T_o-(T_2+T_3)/2  )
+#If you finish this calculation,
+#You will find that Q/(num_rods) = 2*math.pi*k*L*(T_i-T_o)/math.log(r_o/r_i)
+#But Q = H_w*P_hf_i*L*(  (T_5+T_6)/2-T_i  ) and Q = H_w*P_hf_o*L*(  T_o-(T_2+T_3)/2  ) show a very large difference
+#But but, Q = h_eff*A_eff * ((T_5+T_6)/2 - (T_2+T_3)/2)
+#h_eff*A_eff = 1/( 1/(math.pi*d_i*num_rods*L)+1/(math.pi*d_o*num_rods*L)+math.log(d_o/d_i)/(2*math.pi*k*num_rods*L) )
+#It does not show big difference.
+#I do not know why...
 
 motor_ramp_up_duration = 3605
 motor_ramp_down_duration = 1800
