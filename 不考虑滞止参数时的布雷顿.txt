@@ -60,7 +60,7 @@ Eq25: h_4_is = cp*T_4_is
 Eq26: h_4 = eff_t*h_4_is - eff_t*h_3 + h_3
 
 Eq27: tau_c = -m_dot/omega * (h_2 - h_1)
-Eq28: tau_t = -m_dot/omega * (h_4 - h_3)
+Eq28: tau_t = -m_dot/omega * (h_5 - h_4)
 Eq29: tau_m + tau_c + tau_t = 0
 
 Eq30: h_3 = (m_dot*h_2 + Q)/m_dot
