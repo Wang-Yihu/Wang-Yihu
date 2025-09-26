@@ -2,6 +2,7 @@
 # [dC1/dt] = beta1/LAMBDA * nt - lambda1*C1
 # ......
 # [dC6/dt] = beta6/LAMBDA * nt - lambda6*C6
+# 
 LAMBDA = 2E-5
 beta1 = 0.000266
 beta2 = 0.001491
