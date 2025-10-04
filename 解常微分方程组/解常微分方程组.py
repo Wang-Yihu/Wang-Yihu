@@ -2,11 +2,6 @@ from scipy.integrate import solve_ivp
 import math
 import numpy as np
 
-# 定义微分方程 dy/dt = -2y + 1
-def f(t, y):
-    return -2*y + 1
-
-# 求解区间 [0, 5]，初值 y(0) = 0
 # 定义方程组
 def f(t, XY):
     X, Y = XY  # 解包
