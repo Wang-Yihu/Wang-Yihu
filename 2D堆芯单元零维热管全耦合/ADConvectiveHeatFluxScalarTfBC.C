@@ -9,7 +9,7 @@
 
 #include "ADConvectiveHeatFluxScalarTfBC.h"
 
-registerMooseObject("HeatConductionApp", ADConvectiveHeatFluxScalarTfBC);
+registerMooseObject("asnerdihp_fullApp", ADConvectiveHeatFluxScalarTfBC);
 
 InputParameters
 ADConvectiveHeatFluxScalarTfBC::validParams()
