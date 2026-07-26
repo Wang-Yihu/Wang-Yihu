@@ -154,21 +154,18 @@ rho = 0.003
 
 [Executioner]
   type = Transient
-#  nl_abs_tol = 1e-3
-#  nl_rel_tol = 0.5
   dt = 0.01
   num_steps = 100
   solve_type = 'PJFNK'
-#  nl_rel_tol = 1e-1
-#  l_tol = 1e-8
-#  nl_forced_its = 5
+  [./TimeIntegrator]
+    type = LStableDirk2
+  [../]
 []
 
 [Outputs]
   [nt_output]
     type = CSV
     file_base = 'output_nt'
-#    time_step_intervals = 10   # An error input parameters!
     sync_only = True
     sync_times = '0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0'
   []
