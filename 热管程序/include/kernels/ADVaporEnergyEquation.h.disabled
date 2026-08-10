@@ -1,0 +1,50 @@
+#pragma once
+
+#include "ADKernel.h"
+
+/**
+ * Steady one-dimensional vapor energy equation:
+ *
+ *   d[rho u A (h + beta u^2/2)]/dx
+ *     = d(m_dot)/dx (h + u_i^2/2),
+ *
+ *   u_i = d(m_dot)/dx / (rho pi D).
+ *
+ * This Kernel acts on vapor temperature T. The convective energy-flux
+ * derivative is integrated by parts. The companion ADVaporEnergyFluxBC adds
+ * the resulting boundary term.
+ */
+class ADVaporEnergyEquation : public ADKernel
+{
+public:
+  static InputParameters validParams();
+
+  ADVaporEnergyEquation(const InputParameters & parameters);
+
+protected:
+  virtual ADReal computeQpResidual() override;
+
+  /// Axial vapor velocity, m/s
+  const ADVariableValue & _velocity;
+
+  /// Axial gradient of mass flow rate, kg/(m s)
+  const ADVariableGradient & _grad_mass_flow_rate;
+
+  /// Vapor density, kg/m^3
+  const ADMaterialProperty<Real> & _density;
+
+  /// Saturated vapor specific enthalpy, J/kg
+  const ADMaterialProperty<Real> & _enthalpy;
+
+  /// Energy correction factor beta
+  const ADMaterialProperty<Real> & _beta;
+
+  /// Vapor-core diameter, m
+  const Real _diameter;
+
+  /// Vapor-core cross-sectional area, m^2
+  const Real _area;
+
+  /// Vapor-liquid interface perimeter, m
+  const Real _perimeter;
+};

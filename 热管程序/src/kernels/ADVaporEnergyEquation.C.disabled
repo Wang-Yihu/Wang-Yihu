@@ -1,0 +1,62 @@
+#include "ADVaporEnergyEquation.h"
+
+#include <cmath>
+
+registerMooseObject("asnerdihp_tianApp", ADVaporEnergyEquation);
+
+InputParameters
+ADVaporEnergyEquation::validParams()
+{
+  InputParameters params = ADKernel::validParams();
+
+  params.addClassDescription(
+      "Steady 1-D heat-pipe vapor energy equation with distributed phase-change mass source.");
+
+  params.addRequiredCoupledVar("velocity", "Axial vapor velocity in m/s");
+  params.addRequiredCoupledVar("mass_flow_rate", "Axial vapor mass flow rate in kg/s");
+  params.addRequiredParam<MaterialPropertyName>("density", "Vapor density property");
+  params.addRequiredParam<MaterialPropertyName>(
+      "enthalpy", "Saturated vapor specific enthalpy property");
+  params.addRequiredParam<MaterialPropertyName>(
+      "energy_correction", "Energy correction factor beta property");
+  params.addRequiredRangeCheckedParam<Real>(
+      "diameter", "diameter > 0", "Vapor-core diameter in m");
+
+  return params;
+}
+
+ADVaporEnergyEquation::ADVaporEnergyEquation(const InputParameters & parameters)
+  : ADKernel(parameters),
+    _velocity(adCoupledValue("velocity")),
+    _grad_mass_flow_rate(adCoupledGradient("mass_flow_rate")),
+    _density(getADMaterialProperty<Real>(getParam<MaterialPropertyName>("density"))),
+    _enthalpy(getADMaterialProperty<Real>(getParam<MaterialPropertyName>("enthalpy"))),
+    _beta(getADMaterialProperty<Real>(getParam<MaterialPropertyName>("energy_correction"))),
+    _diameter(getParam<Real>("diameter")),
+    _area(0.25 * std::acos(-1.0) * _diameter * _diameter),
+    _perimeter(std::acos(-1.0) * _diameter)
+{
+}
+
+ADReal
+ADVaporEnergyEquation::computeQpResidual()
+{
+  const ADReal axial_specific_energy =
+      _enthalpy[_qp] + 0.5 * _beta[_qp] * _velocity[_qp] * _velocity[_qp];
+
+  const ADReal axial_energy_flux =
+      _density[_qp] * _velocity[_qp] * _area * axial_specific_energy;
+
+  const ADReal mass_source_per_length = _grad_mass_flow_rate[_qp](0);
+
+  const ADReal interface_velocity =
+      mass_source_per_length / (_density[_qp] * _perimeter);
+
+  const ADReal phase_change_energy_source =
+      mass_source_per_length *
+      (_enthalpy[_qp] + 0.5 * interface_velocity * interface_velocity);
+
+  // d(F_E)/dx - S_E = 0 after integration by parts of d(F_E)/dx.
+  return -_grad_test[_i][_qp](0) * axial_energy_flux -
+         _test[_i][_qp] * phase_change_energy_source;
+}
